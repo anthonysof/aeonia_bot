@@ -1,0 +1,73 @@
+# bot.py
+import os
+
+import discord
+from dotenv import load_dotenv
+
+class Vote:
+    def __init__(self, voterMessage, replyMessage):
+        self.voterMessage = voterMessage
+        self.replyMessage = replyMessage
+
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
+GUILD = os.getenv('DISCORD_GUILD')
+
+client = discord.Client(intents=discord.Intents.all())
+
+@client.event
+async def on_ready():
+    print(f'{client.user} has connected to Discord!')
+    for guild in client.guilds:
+            if guild.name == GUILD:
+                break
+    
+    print (
+        f'{client.user} is connected to the following server:\n'
+        f'{guild.name}(id: {guild.id})'
+    )
+
+voters = []
+
+@client.event
+async def on_message(message):
+        print(f'message came channel id:{message.channel.id}')
+        print(message)
+        print(message.content)
+        if message.channel.name == "personal-action-decleration":
+        #if message.author.name == "magnus_g":
+            if message.content.startswith("!voted"):
+                sentMessage = await message.channel.send('Your vote will be locked are you sure? React to this message', reference=message)
+                await sentMessage.add_reaction("✅")
+                await sentMessage.add_reaction("❌")
+                vote = Vote(message, sentMessage)
+                voters.append(vote)
+            elif message.author.id == 286866894810775564 and message.content.startswith("!kazanaki"):
+                sentMessage = await message.channel.send('FLUSH!!!', reference=message)
+                await message.channel.purge()            
+            else:
+                if message.author.id != 286866894810775564:
+                    await message.channel.delete_messages([message])
+
+        
+
+@client.event
+async def on_reaction_add(reaction, user):
+    print(reaction.message)
+    print(user)
+    print(reaction)
+    vote = next((x for x in voters if x.replyMessage == reaction.message and x.voterMessage.author.id == user.id), None)
+    if reaction.message.channel.id == 1146469328640819281 and vote != None:
+        print('ton vrika')
+        if reaction.emoji == "✅":
+            await vote.voterMessage.channel.send(f'Thank you {vote.voterMessage.author.mention}, your vote is locked, bye bye')
+            print(vote.voterMessage.author.roles)
+            actionRole = vote.voterMessage.author.get_role(1146817577109164105)
+            await vote.voterMessage.author.remove_roles(actionRole)
+        elif reaction.emoji == "❌":
+            await vote.voterMessage.channel.send(f'{vote.voterMessage.author.mention}, change your vote and then use voted. again')
+        voters.remove(vote)
+        await vote.voterMessage.delete()
+        await vote.replyMessage.delete()
+
+client.run(TOKEN)
